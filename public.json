@@ -1,0 +1,39 @@
+{
+  "repo": "atomic-write",
+  "description": "A Python library that replaces a file with complete bytes, or leaves the previous bytes in place.",
+  "topics": [
+    "atomic",
+    "filesystem",
+    "durability",
+    "fsync",
+    "crash-safety",
+    "python",
+    "file-write"
+  ],
+  "pypi": "https://pypi.org/project/atomic-write/",
+  "files": [
+    "pyproject.toml",
+    "python/atomic_write/__init__.py",
+    "tests/test_atomic_write.py",
+    "README.md",
+    "README.ko.md",
+    "AGENTS.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "CODE_OF_CONDUCT.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    ".github/pull_request_template.md",
+    ".github/ISSUE_TEMPLATE/bug_report.yml",
+    ".github/ISSUE_TEMPLATE/feature_request.yml",
+    ".github/ISSUE_TEMPLATE/config.yml",
+    "docs/diagrams/write-path.mmd",
+    "docs/diagrams/write-path.ko.mmd",
+    "docs/diagrams/write-path.light.svg",
+    "docs/diagrams/write-path.dark.svg",
+    "docs/diagrams/write-path.ko.light.svg",
+    "docs/diagrams/write-path.ko.dark.svg",
+    "public.json",
+    ".gitignore"
+  ]
+}

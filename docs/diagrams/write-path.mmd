@@ -1,0 +1,19 @@
+flowchart TD
+    A[Caller passes bytes or text] --> B{Value serializes?}
+    B -- no --> C[Raise before touching the filesystem]
+    B -- yes --> D[Create an exclusive temporary file in the destination directory]
+    D --> E[Set the final file mode]
+    E --> F[Write, flush]
+    F --> G{Durability}
+    G -- none --> H{Publish how}
+    G -- file or file+directory --> I[fsync the temporary file]
+    I --> H
+    H -- overwrite --> J[os.replace onto the destination]
+    H -- create-only --> K[os.link; FileExistsError if it exists]
+    J --> L{Durability is file+directory}
+    K --> L
+    L -- yes --> M[fsync the directory]
+    L -- no --> N[Return the byte count]
+    M --> N
+    B -- exception --> O[Remove the temporary file; destination keeps its bytes]
+    F -- exception --> O

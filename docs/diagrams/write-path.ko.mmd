@@ -1,0 +1,19 @@
+flowchart TD
+    A[호출자가 텍스트나 바이트를 넘김] --> B{직렬화 성공?}
+    B -- 아니오 --> C[파일을 만지기 전에 예외]
+    B -- 예 --> D[대상과 같은 디렉터리에 배타적 임시 파일 생성]
+    D --> E[최종 파일 모드 지정]
+    E --> F[쓰기, flush]
+    F --> G{durability}
+    G -- none --> H{게시 방식}
+    G -- file 또는 file+directory --> I[임시 파일 fsync]
+    I --> H
+    H -- overwrite --> J[os.replace로 대상 교체]
+    H -- create-only --> K[os.link, 이미 있으면 FileExistsError]
+    J --> L{durability가 file+directory}
+    K --> L
+    L -- 예 --> M[디렉터리 fsync]
+    L -- 아니오 --> N[쓴 바이트 수 반환]
+    M --> N
+    B -- 예외 --> O[임시 파일 삭제, 대상은 이전 바이트 유지]
+    F -- 예외 --> O

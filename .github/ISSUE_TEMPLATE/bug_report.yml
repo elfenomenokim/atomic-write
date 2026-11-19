@@ -1,0 +1,48 @@
+name: Bug report
+description: A write published partial bytes, lost the previous file, or raised unexpectedly.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report a security problem here. Use the Security tab's
+        "Report a vulnerability" form. See SECURITY.md.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The call you made and what you observed.
+      placeholder: |
+        write_json(path, value, overwrite=False) raised IOException instead of FileExistsError
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The atomic-write version, or the commit you are running.
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and Python
+      description: Output of `python3 --version` and your OS.
+      placeholder: CPython 3.12.8 on macOS 27 arm64
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: A small script that shows the problem, if you have one.
+      render: python
+    validations:
+      required: false

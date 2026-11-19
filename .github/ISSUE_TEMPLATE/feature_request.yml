@@ -1,0 +1,38 @@
+name: Feature request
+description: A write contract this library cannot express today.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This library does one job: publish one complete file. A request for
+        locking, multi-file transactions or directory publication is likely to be
+        declined, and that is worth knowing before you write it up.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you cannot express with the current keywords, and the call you want to make.
+    validations:
+      required: true
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do now
+      description: The code you wrote to work around it, if any.
+      render: python
+    validations:
+      required: false
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Which contract does this touch
+      options:
+        - overwrite / create-only
+        - durability
+        - mode
+        - dir_fd
+        - symlinks
+        - something else
+    validations:
+      required: true
