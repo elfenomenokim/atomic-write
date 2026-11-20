@@ -34,6 +34,7 @@ import json
 import os
 import stat
 import sys
+import time
 import uuid
 from contextlib import contextmanager
 from typing import Any, BinaryIO, Iterator, TextIO
@@ -123,6 +124,42 @@ def _permissions(mode, name, dir_fd) -> int | None:
     return _existing_mode(name, dir_fd)
 
 
+def _set_mode(descriptor, temporary, permissions) -> None:
+    """Give the temporary file its final mode before any byte is written.
+
+    Windows Python has no `os.fchmod` (before 3.13); `os.chmod` on the path only
+    toggles the read-only bit there, which is all the mode means on Windows.
+    """
+    if hasattr(os, "fchmod"):
+        os.fchmod(descriptor, permissions)
+    else:
+        os.chmod(temporary, permissions)
+
+
+def _replace(source, destination, **kwargs) -> None:
+    """`os.replace`, retried briefly on Windows.
+
+    Windows refuses to replace a file another process holds open (a reader or a
+    concurrent writer's rename) with PermissionError. The refusal is transient,
+    so retry for up to about one second before letting it surface. POSIX renames
+    never hit this and are not retried.
+    """
+    if os.name != "nt":
+        os.replace(source, destination, **kwargs)
+        return
+    delay = 0.005
+    deadline = time.monotonic() + 1.0
+    while True:
+        try:
+            os.replace(source, destination, **kwargs)
+            return
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(delay)
+            delay = min(delay * 2, 0.1)
+
+
 def _check(durability, overwrite) -> None:
     if durability not in DURABILITIES:
         raise ValueError(f"durability must be one of {DURABILITIES}, not {durability!r}")
@@ -165,12 +202,12 @@ def _publish(
         open_kwargs = {} if encoding is None else {"encoding": encoding, "errors": errors, "newline": newline}
         with os.fdopen(descriptor, "wb" if encoding is None else "w", **open_kwargs) as stream:
             if permissions is not None:
-                os.fchmod(stream.fileno(), permissions)
+                _set_mode(stream.fileno(), temporary, permissions)
             written = stream.write(data)
             stream.flush()
             _sync_file(stream.fileno(), durability)
         if overwrite:
-            os.replace(temporary, name, **extra_kwargs)
+            _replace(temporary, name, **extra_kwargs)
         else:
             os.link(temporary, name, follow_symlinks=False, **extra_kwargs)
             os.unlink(temporary, dir_fd=dir_fd)
@@ -299,7 +336,7 @@ class Staged:
         )
         try:
             if permissions is not None:
-                os.fchmod(descriptor, permissions)
+                _set_mode(descriptor, self._temporary, permissions)
             if binary:
                 self.stream: TextIO | BinaryIO = os.fdopen(descriptor, "wb")
             else:
@@ -338,7 +375,7 @@ class Staged:
             self.stream.close()
             extra_kwargs = {} if self._dir_fd is None else {"src_dir_fd": self._dir_fd, "dst_dir_fd": self._dir_fd}
             if self._overwrite:
-                os.replace(self._temporary, self._name, **extra_kwargs)
+                _replace(self._temporary, self._name, **extra_kwargs)
             else:
                 os.link(self._temporary, self._name, follow_symlinks=False, **extra_kwargs)
                 os.unlink(self._temporary, dir_fd=self._dir_fd)

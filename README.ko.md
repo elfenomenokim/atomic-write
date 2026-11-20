@@ -173,10 +173,15 @@ fsync를 건너뜁니다. 그 시점에는 이미 이름 변경이 끝났기 때
 
 ## 플랫폼
 
-- macOS arm64, CPython 3.12에서 검증했습니다.
-- Windows에서 `follow_symlinks`, `dir_fd`, 디렉터리 fsync는 실행해 보지 않았습니다.
-  `os.replace`는 Windows에서도 원자적이고, 디렉터리 fsync는 Windows에 없으므로
-  생략합니다. **Windows와 Linux에서는 검증하지 않았습니다.**
+- 테스트는 macOS arm64(CPython 3.12), Ubuntu 24.04 arm64(CPython 3.12), Windows 11
+  (CPython 3.10)에서 모두 통과합니다.
+- Windows에는 POSIX 권한 비트와 `dir_fd`가 없고 디렉터리 fsync도 할 수 없습니다.
+  그래서 `mode`는 읽기 전용 여부만 바꾸고, 디렉터리 동기화는 생략하며, 해당 기능
+  테스트는 Windows에서 건너뜁니다.
+- Windows는 다른 프로세스가 열어 둔 파일을 교체하지 못합니다. 이때 약 1초 동안
+  교체를 다시 시도한 뒤에도 안 되면 `PermissionError`를 냅니다.
+- `write_text`는 Python 텍스트 모드를 쓰므로 Windows에서 `newline=None`이면 `open()`처럼
+  `\r\n`을 씁니다. 모든 플랫폼에서 같은 바이트가 필요하면 `newline="\n"`을 넘기세요.
 - `dir_fd`는 격리 도구이지 샌드박스가 아닙니다. `..`이 들어간 이름은 커널이 그대로
   해석합니다. 이름은 넘기기 전에 검증하세요.
 

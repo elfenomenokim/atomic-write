@@ -13,6 +13,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "python"))
 import atomic_write  # noqa: E402
 from atomic_write import atomic_path, write_bytes, write_json, write_text  # noqa: E402
 
+posix_only = pytest.mark.skipif(
+    os.name == "nt", reason="POSIX permission bits, dir_fd and directory fsync do not exist on Windows"
+)
+
 
 def only_names(directory: Path) -> list[str]:
     """Every entry in `directory`, so a leaked temporary file fails a test."""
@@ -26,7 +30,7 @@ def test_creates_a_new_file_with_its_text(tmp_path):
     target = tmp_path / "state.json"
     written = write_text(target, '{"a": 1}')
     assert written == 8
-    assert target.read_text() == '{"a": 1}'
+    assert target.read_text(encoding="utf-8") == '{"a": 1}'
     assert only_names(tmp_path) == ["state.json"]
 
 
@@ -34,7 +38,7 @@ def test_replaces_existing_bytes_completely(tmp_path):
     target = tmp_path / "state.json"
     target.write_text("a much longer previous value")
     write_text(target, "short")
-    assert target.read_text() == "short"
+    assert target.read_text(encoding="utf-8") == "short"
 
 
 def test_writes_bytes_and_bytearray_and_memoryview(tmp_path):
@@ -50,7 +54,7 @@ def test_writes_bytes_and_bytearray_and_memoryview(tmp_path):
 def test_relative_path_is_accepted(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     write_text("relative.txt", "body")
-    assert (tmp_path / "relative.txt").read_text() == "body"
+    assert (tmp_path / "relative.txt").read_text(encoding="utf-8") == "body"
 
 
 # --- create-only --------------------------------------------------------------
@@ -59,7 +63,7 @@ def test_relative_path_is_accepted(tmp_path, monkeypatch):
 def test_create_only_publishes_a_new_file(tmp_path):
     target = tmp_path / "claim.json"
     write_text(target, "first", overwrite=False)
-    assert target.read_text() == "first"
+    assert target.read_text(encoding="utf-8") == "first"
 
 
 def test_create_only_refuses_an_existing_file(tmp_path):
@@ -67,7 +71,7 @@ def test_create_only_refuses_an_existing_file(tmp_path):
     target.write_text("held")
     with pytest.raises(FileExistsError):
         write_text(target, "replacement", overwrite=False)
-    assert target.read_text() == "held"
+    assert target.read_text(encoding="utf-8") == "held"
     assert only_names(tmp_path) == ["claim.json"]
 
 
@@ -92,12 +96,13 @@ def test_create_only_lets_exactly_one_of_two_creators_win(tmp_path):
 
     assert sorted(outcome for outcome, _ in outcomes) == ["created", "refused"]
     winner = next(body for outcome, body in outcomes if outcome == "created")
-    assert target.read_text() == winner
+    assert target.read_text(encoding="utf-8") == winner
 
 
 # --- permissions --------------------------------------------------------------
 
 
+@posix_only
 def test_keeps_the_existing_mode_by_default(tmp_path):
     target = tmp_path / "secret.json"
     target.write_text("old")
@@ -108,11 +113,15 @@ def test_keeps_the_existing_mode_by_default(tmp_path):
 
 def test_a_new_file_uses_the_umask_not_the_previous_file(tmp_path):
     target = tmp_path / "fresh.json"
+    current = os.umask(0)
+    os.umask(current)
     write_text(target, "body")
-    # 0o666 minus the process umask; the write must not impose a wider mode.
-    assert stat.S_IMODE(target.stat().st_mode) & 0o022 == 0
+    # 0o666 minus the process umask (022 on macOS, often 002 on Ubuntu).
+    expected = 0o666 & ~current if os.name != "nt" else stat.S_IMODE(target.stat().st_mode)
+    assert stat.S_IMODE(target.stat().st_mode) == expected
 
 
+@posix_only
 def test_an_explicit_mode_wins_over_the_existing_one(tmp_path):
     target = tmp_path / "secret.json"
     target.write_text("old")
@@ -124,6 +133,7 @@ def test_an_explicit_mode_wins_over_the_existing_one(tmp_path):
 # --- symlinks -----------------------------------------------------------------
 
 
+@posix_only
 def test_replaces_the_target_and_keeps_the_symlink(tmp_path):
     target = tmp_path / "auth.json"
     target.write_text("old")
@@ -131,7 +141,7 @@ def test_replaces_the_target_and_keeps_the_symlink(tmp_path):
     link = tmp_path / "linked.json"
     link.symlink_to(target.name)
     write_text(link, '{"한글": "value"}')
-    assert target.read_text() == '{"한글": "value"}'
+    assert target.read_text(encoding="utf-8") == '{"한글": "value"}'
     assert stat.S_IMODE(target.stat().st_mode) == 0o640
     assert link.is_symlink()
     assert only_names(tmp_path) == ["auth.json", "linked.json"]
@@ -142,7 +152,7 @@ def test_a_dangling_symlink_creates_its_target(tmp_path):
     link = tmp_path / "linked.json"
     link.symlink_to(target.name)
     write_text(link, "body")
-    assert target.read_text() == "body"
+    assert target.read_text(encoding="utf-8") == "body"
     assert link.is_symlink()
 
 
@@ -153,8 +163,8 @@ def test_follow_symlinks_false_replaces_the_link_itself(tmp_path):
     entry.symlink_to(target)
     write_text(entry, "new entry", follow_symlinks=False)
     assert entry.is_symlink() is False
-    assert entry.read_text() == "new entry"
-    assert target.read_text() == "outside", "the link target is untouched"
+    assert entry.read_text(encoding="utf-8") == "new entry"
+    assert target.read_text(encoding="utf-8") == "outside", "the link target is untouched"
     assert only_names(tmp_path) == ["index.html", "outside.txt"]
 
 
@@ -165,7 +175,7 @@ def test_follow_symlinks_true_is_the_default(tmp_path):
     entry.symlink_to(target.name)
     write_text(entry, "new")
     assert entry.is_symlink() is True
-    assert target.read_text() == "new"
+    assert target.read_text(encoding="utf-8") == "new"
 
 
 def test_write_bytes_follows_the_same_symlink_policy(tmp_path):
@@ -207,7 +217,7 @@ def test_a_failed_write_keeps_the_previous_bytes(tmp_path, monkeypatch):
     monkeypatch.setattr(os, "fdopen", lambda *a, **k: Interrupted(real_fdopen(*a, **k)))
     with pytest.raises(OSError, match="disk-full"):
         write_text(target, '{"status":"replacement"}')
-    assert target.read_text() == '{"status":"complete"}'
+    assert target.read_text(encoding="utf-8") == '{"status":"complete"}'
     assert only_names(tmp_path) == ["receipt.json"]
 
 
@@ -221,7 +231,7 @@ def test_a_failed_rename_keeps_the_previous_bytes_and_leaves_no_temporary(tmp_pa
     monkeypatch.setattr(os, "replace", refuse)
     with pytest.raises(OSError, match="rename failure"):
         write_text(target, "replacement")
-    assert target.read_text() == "previous"
+    assert target.read_text(encoding="utf-8") == "previous"
     assert only_names(tmp_path) == ["state.json"]
 
 
@@ -230,7 +240,7 @@ def test_an_unserializable_json_value_leaves_the_file_untouched(tmp_path):
     target.write_text('{"kept":true}')
     with pytest.raises(TypeError):
         write_json(target, {"bad": object()})
-    assert target.read_text() == '{"kept":true}'
+    assert target.read_text(encoding="utf-8") == '{"kept":true}'
     assert only_names(tmp_path) == ["state.json"]
 
 
@@ -262,7 +272,7 @@ def test_concurrent_writers_never_publish_partial_bytes(tmp_path):
         thread.join()
 
     assert failures == []
-    assert target.read_text() in bodies
+    assert target.read_text(encoding="utf-8") in bodies
     assert only_names(tmp_path) == ["ledger.json"]
 
 
@@ -280,7 +290,7 @@ def test_nested_writes_use_independent_temporary_files(tmp_path, monkeypatch):
 
     monkeypatch.setattr(os, "replace", reentrant)
     write_text(target, '{"outer": true}')
-    assert json.loads(target.read_text()) == {"outer": True}
+    assert json.loads(target.read_text(encoding="utf-8")) == {"outer": True}
     assert only_names(tmp_path) == ["cursor.json"]
 
 
@@ -292,13 +302,13 @@ def test_json_serialization_is_stable_and_readable(tmp_path):
     value = {"z": "한글", "a": [1, None]}
     write_json(target, value, indent=2, sort_keys=True)
     expected = json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
-    assert target.read_text() == expected
+    assert target.read_text(encoding="utf-8") == expected
 
 
 def test_json_defaults_and_compact_form(tmp_path):
     target = tmp_path / "compact.json"
     write_json(target, {"b": 2, "a": 1}, indent=None, sort_keys=True, newline="")
-    assert target.read_text() == '{"a": 1, "b": 2}'
+    assert target.read_text(encoding="utf-8") == '{"a": 1, "b": 2}'
 
 
 # --- durability ---------------------------------------------------------------
@@ -308,7 +318,7 @@ def test_json_defaults_and_compact_form(tmp_path):
 def test_every_durability_level_publishes_the_bytes(tmp_path, durability):
     target = tmp_path / "state.json"
     write_text(target, durability, durability=durability)
-    assert target.read_text() == durability
+    assert target.read_text(encoding="utf-8") == durability
 
 
 def test_an_unknown_durability_level_is_refused_before_writing(tmp_path):
@@ -332,6 +342,7 @@ def test_file_durability_fsyncs_the_file_and_not_the_directory(tmp_path, monkeyp
     assert len(calls) == 1
 
 
+@posix_only
 def test_file_and_directory_durability_fsyncs_the_directory(tmp_path, monkeypatch):
     calls = []
 
@@ -346,6 +357,7 @@ def test_file_and_directory_durability_fsyncs_the_directory(tmp_path, monkeypatc
 # --- dir_fd -------------------------------------------------------------------
 
 
+@posix_only
 def test_dir_fd_writes_inside_the_validated_directory(tmp_path):
     directory = os.open(tmp_path, os.O_RDONLY)
     try:
@@ -359,6 +371,7 @@ def test_dir_fd_writes_inside_the_validated_directory(tmp_path):
         os.close(directory)
 
 
+@posix_only
 def test_create_only_with_dir_fd_refuses_an_existing_file(tmp_path):
     directory = os.open(tmp_path, os.O_RDONLY)
     try:
@@ -373,13 +386,14 @@ def test_create_only_with_dir_fd_refuses_an_existing_file(tmp_path):
         os.close(directory)
 
 
+@posix_only
 def test_dir_fd_writes_a_nested_name_relative_to_the_descriptor(tmp_path):
     inside = tmp_path / "inside"
     (inside / "nested").mkdir(parents=True)
     directory = os.open(inside / "nested", os.O_RDONLY)
     try:
         write_text("state.json", "body", dir_fd=directory)
-        assert (inside / "nested/state.json").read_text() == "body"
+        assert (inside / "nested/state.json").read_text(encoding="utf-8") == "body"
         assert sorted(p.name for p in (inside / "nested").iterdir()) == ["state.json"]
     finally:
         os.close(directory)
@@ -395,7 +409,7 @@ def test_atomic_path_publishes_on_success(tmp_path):
         staged.write("{")
         staged.write('"a": 1')
         staged.write("}")
-    assert target.read_text() == '{"a": 1}'
+    assert target.read_text(encoding="utf-8") == '{"a": 1}'
     assert only_names(tmp_path) == ["state.json"]
 
 
@@ -406,7 +420,7 @@ def test_atomic_path_discards_on_exception(tmp_path):
         with atomic_path(target) as staged:
             staged.write("partial")
             raise RuntimeError("the caller gave up")
-    assert target.read_text() == "previous"
+    assert target.read_text(encoding="utf-8") == "previous"
     assert only_names(tmp_path) == ["state.json"]
 
 
@@ -416,10 +430,11 @@ def test_atomic_path_honours_create_only(tmp_path):
     with pytest.raises(FileExistsError):
         with atomic_path(target, overwrite=False) as staged:
             staged.write("replacement")
-    assert target.read_text() == "held"
+    assert target.read_text(encoding="utf-8") == "held"
     assert only_names(tmp_path) == ["claim.json"]
 
 
+@posix_only
 def test_atomic_path_keeps_the_existing_mode_by_default(tmp_path):
     target = tmp_path / "secret.json"
     target.write_text("old")
@@ -473,9 +488,10 @@ def test_temporary_file_stays_beside_destination_when_cwd_is_elsewhere(tmp_path,
 
 def test_write_json_newline_none_appends_nothing(tmp_path):
     atomic_write.write_json(tmp_path / "v.json", {"a": 1}, newline=None, indent=None)
-    assert (tmp_path / "v.json").read_text() == '{"a": 1}'
+    assert (tmp_path / "v.json").read_text(encoding="utf-8") == '{"a": 1}'
 
 
+@posix_only
 def test_replacing_a_link_takes_the_regular_file_mode(tmp_path):
     real = tmp_path / "real"
     real.write_text("old")
@@ -499,6 +515,7 @@ def test_binary_staged_check_then_discard_keeps_destination(tmp_path):
     assert sorted(p.name for p in tmp_path.iterdir()) == ["blob.bin"]
 
 
+@posix_only
 def test_binary_staged_publishes_chunks(tmp_path):
     target = tmp_path / "blob.bin"
     with atomic_path(target, binary=True, mode=0o600) as staged:
@@ -510,7 +527,7 @@ def test_binary_staged_publishes_chunks(tmp_path):
 
 def test_full_durability_writes(tmp_path):
     write_text(tmp_path / "j.json", "x", durability="full")
-    assert (tmp_path / "j.json").read_text() == "x"
+    assert (tmp_path / "j.json").read_text(encoding="utf-8") == "x"
 
 
 def test_unsyncable_directory_does_not_fail_finished_write(tmp_path, monkeypatch):
@@ -524,14 +541,15 @@ def test_unsyncable_directory_does_not_fail_finished_write(tmp_path, monkeypatch
 
     monkeypatch.setattr(atomic_write.os, "fsync", fsync)
     write_text(tmp_path / "s.txt", "done")
-    assert (tmp_path / "s.txt").read_text() == "done"
+    assert (tmp_path / "s.txt").read_text(encoding="utf-8") == "done"
 
 
 def test_write_json_default(tmp_path):
-    write_json(tmp_path / "d.json", {"p": Path("/x")}, default=str, indent=None)
-    assert (tmp_path / "d.json").read_text() == '{"p": "/x"}\n'
+    write_json(tmp_path / "d.json", {"p": Path("x")}, default=str, indent=None)
+    assert (tmp_path / "d.json").read_text(encoding="utf-8") == '{"p": "x"}\n'
 
 
+@posix_only
 def test_mode_umask_ignores_the_existing_mode(tmp_path):
     target = tmp_path / "u.txt"
     target.write_text("old")

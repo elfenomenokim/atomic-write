@@ -177,10 +177,15 @@ skipped rather than raised, because the rename has already happened by then.
 
 ## Platform notes
 
-- Verified on macOS arm64 with CPython 3.12.
-- On Windows, `follow_symlinks`, `dir_fd` and directory fsync are not exercised;
-  `os.replace` is atomic there, and the directory sync is skipped because Windows
-  has no directory fsync. **Not verified on Windows or Linux.**
+- The test suite passes on macOS arm64 (CPython 3.12), Ubuntu 24.04 arm64
+  (CPython 3.12) and Windows 11 (CPython 3.10).
+- On Windows there are no POSIX permission bits, `dir_fd` is unavailable and a
+  directory cannot be fsynced: `mode` only toggles the read-only bit, the
+  directory sync is skipped, and the tests for those features are skipped there.
+- Windows refuses to replace a file another process holds open. The rename is
+  retried for up to about one second before the `PermissionError` surfaces.
+- `write_text` uses Python's text mode, so on Windows `newline=None` writes
+  `\r\n`, like `open()`. Pass `newline="\n"` for identical bytes on every platform.
 - `dir_fd` is a containment tool, not a sandbox: a name containing `..` is still
   resolved by the kernel. Validate names before passing them.
 

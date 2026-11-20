@@ -5,6 +5,22 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-20
+
+### Fixed
+
+- Windows: writes that set a mode no longer fail with `AttributeError`, because
+  Windows Python has no `os.fchmod`; the mode is applied by path instead.
+- Windows: the final rename is retried for up to about one second when another
+  process holds the destination open, instead of failing at once with `PermissionError`.
+- The umask test computes the expected mode from the live umask, so it passes on
+  systems whose umask is `002`.
+
+### Changed
+
+- The test suite now runs on macOS, Ubuntu and Windows; POSIX-only features are
+  skipped on Windows.
+
 ## [0.1.0] - 2026-11-19
 
 ### Added
