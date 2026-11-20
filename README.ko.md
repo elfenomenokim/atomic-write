@@ -1,17 +1,20 @@
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/elfenomenokim/atomic-write/main/docs/logo.svg" width="96" height="96" alt="체크 표시가 있는 파일 아이콘">
+
 # atomic-write
 
 파일을 온전한 바이트로 교체하거나, 이전 바이트를 그대로 두는 Python 라이브러리입니다.
 
-Python 3.9+ · 의존성 없음
+[English](README.md) · Python 3.9+ · 의존성 없음
 
-[English](README.md) · [설치](#설치) · [빠른 시작](#빠른-시작) · [레퍼런스](#레퍼런스)
+[![pypi](https://img.shields.io/pypi/v/feno-atomic-write?label=pypi)](https://pypi.org/project/feno-atomic-write/)
+[![tests](https://github.com/elfenomenokim/atomic-write/actions/workflows/tests.yml/badge.svg)](https://github.com/elfenomenokim/atomic-write/actions/workflows/tests.yml)
+[![license](https://img.shields.io/github/license/elfenomenokim/atomic-write)](https://github.com/elfenomenokim/atomic-write/blob/main/LICENSE)
 
-```python
-from atomic_write import write_json
+[설치](#설치) · [빠른 시작](#빠른-시작) · [레퍼런스](#레퍼런스)
 
-write_json("state/quota.json", {"plan": "pro", "remaining": 42})
-# 읽는 쪽은 항상 이전 파일 전체 아니면 새 파일 전체를 봅니다.
-```
+</div>
 
 <p align="center">
   <picture>
@@ -57,6 +60,39 @@ python3 -m pip install .
 ```
 
 ## 빠른 시작
+
+빈 폴더에서 실제로 돌린 결과입니다. 권한을 유지하며 파일을 교체하고, 두 번째 쓰기가 가져갈 수 없는 선점 파일을 만듭니다.
+
+```python
+import os, stat
+from atomic_write import write_json, write_text
+
+write_json("state.json", {"plan": "pro", "remaining": 42})
+print(open("state.json").read(), end="")
+
+os.chmod("state.json", 0o600)
+write_json("state.json", {"plan": "pro", "remaining": 41})
+print(oct(stat.S_IMODE(os.stat("state.json").st_mode)))
+
+write_text("owner.lock", "4242", overwrite=False)
+try:
+    write_text("owner.lock", "5151", overwrite=False)
+except FileExistsError as error:
+    print("FileExistsError:", error.filename)
+print(open("owner.lock").read())
+print(sorted(os.listdir(".")))
+```
+
+```text
+{
+  "plan": "pro",
+  "remaining": 42
+}
+0o600
+FileExistsError: owner.lock
+4242
+['owner.lock', 'state.json']
+```
 
 파일을 교체하면서 권한을 유지합니다.
 

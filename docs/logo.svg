@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96" role="img" aria-label="atomic-write: a file that is either whole or untouched">
+  <rect width="96" height="96" rx="20" fill="#EDEFF3"/>
+  <g fill="none" stroke="#334155" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 20h26l14 14v42H30z"/>
+    <path d="M56 20v14h14"/>
+    <path d="M39 55l7 7 13-14"/>
+  </g>
+</svg>

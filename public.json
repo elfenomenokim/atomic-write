@@ -37,6 +37,7 @@
     ".gitignore",
     ".github/workflows/opencode-review.yml",
     ".github/workflows/claude.yml",
-    ".github/workflows/tests.yml"
+    ".github/workflows/tests.yml",
+    "docs/logo.svg"
   ]
 }

@@ -560,3 +560,12 @@ def test_mode_umask_ignores_the_existing_mode(tmp_path):
     finally:
         os.umask(old)
     assert target.stat().st_mode & 0o7777 == 0o644
+
+
+def test_create_only_refusal_names_the_destination(tmp_path):
+    target = tmp_path / "owner.lock"
+    write_text(target, "first", overwrite=False)
+    with pytest.raises(FileExistsError) as caught:
+        write_text(target, "second", overwrite=False)
+    assert caught.value.filename == str(target)
+    assert target.read_text(encoding="utf-8") == "first"

@@ -1,17 +1,20 @@
+<div align="center">
+
+<img src="https://raw.githubusercontent.com/elfenomenokim/atomic-write/main/docs/logo.svg" width="96" height="96" alt="A file icon with a check mark">
+
 # atomic-write
 
 A Python library that replaces a file with complete bytes, or leaves the previous bytes in place.
 
-Python 3.9+ · no dependencies
+[한국어](README.ko.md) · Python 3.9+ · no dependencies
 
-[한국어](README.ko.md) · [Install](#install) · [Quick start](#quick-start) · [Reference](#reference)
+[![pypi](https://img.shields.io/pypi/v/feno-atomic-write?label=pypi)](https://pypi.org/project/feno-atomic-write/)
+[![tests](https://github.com/elfenomenokim/atomic-write/actions/workflows/tests.yml/badge.svg)](https://github.com/elfenomenokim/atomic-write/actions/workflows/tests.yml)
+[![license](https://img.shields.io/github/license/elfenomenokim/atomic-write)](https://github.com/elfenomenokim/atomic-write/blob/main/LICENSE)
 
-```python
-from atomic_write import write_json
+[Install](#install) · [Quick start](#quick-start) · [Reference](#reference)
 
-write_json("state/quota.json", {"plan": "pro", "remaining": 42})
-# Every reader sees the old file or the new one, never a partial write.
-```
+</div>
 
 <p align="center">
   <picture>
@@ -57,6 +60,39 @@ python3 -m pip install .
 ```
 
 ## Quick start
+
+A real run in an empty directory: replace a file and keep its mode, then claim a lock file that a second writer cannot take.
+
+```python
+import os, stat
+from atomic_write import write_json, write_text
+
+write_json("state.json", {"plan": "pro", "remaining": 42})
+print(open("state.json").read(), end="")
+
+os.chmod("state.json", 0o600)
+write_json("state.json", {"plan": "pro", "remaining": 41})
+print(oct(stat.S_IMODE(os.stat("state.json").st_mode)))
+
+write_text("owner.lock", "4242", overwrite=False)
+try:
+    write_text("owner.lock", "5151", overwrite=False)
+except FileExistsError as error:
+    print("FileExistsError:", error.filename)
+print(open("owner.lock").read())
+print(sorted(os.listdir(".")))
+```
+
+```text
+{
+  "plan": "pro",
+  "remaining": 42
+}
+0o600
+FileExistsError: owner.lock
+4242
+['owner.lock', 'state.json']
+```
 
 Replace a file and keep its permissions:
 

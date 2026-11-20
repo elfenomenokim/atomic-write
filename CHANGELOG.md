@@ -5,6 +5,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-20
+
+### Fixed
+
+- A refused create-only write (`overwrite=False`) raised `FileExistsError` naming the
+  temporary file; it now names the destination.
+
+### Changed
+
+- README first screen follows the elfenomenokim standard: logo, badge row, and a quick
+  start copied from a real run.
+
 ## [0.1.1] - 2026-11-20
 
 ### Fixed

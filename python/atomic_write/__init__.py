@@ -160,6 +160,14 @@ def _replace(source, destination, **kwargs) -> None:
             delay = min(delay * 2, 0.1)
 
 
+def _link(source, destination, **kwargs) -> None:
+    """Create-only publish; a refusal names the destination, not the temporary file."""
+    try:
+        os.link(source, destination, follow_symlinks=False, **kwargs)
+    except FileExistsError as error:
+        raise FileExistsError(error.errno, error.strerror, os.fspath(destination)) from None
+
+
 def _check(durability, overwrite) -> None:
     if durability not in DURABILITIES:
         raise ValueError(f"durability must be one of {DURABILITIES}, not {durability!r}")
@@ -209,7 +217,7 @@ def _publish(
         if overwrite:
             _replace(temporary, name, **extra_kwargs)
         else:
-            os.link(temporary, name, follow_symlinks=False, **extra_kwargs)
+            _link(temporary, name, **extra_kwargs)
             os.unlink(temporary, dir_fd=dir_fd)
         if durability in ("file+directory", "full"):
             _sync_directory(directory, dir_fd)
@@ -377,7 +385,7 @@ class Staged:
             if self._overwrite:
                 _replace(self._temporary, self._name, **extra_kwargs)
             else:
-                os.link(self._temporary, self._name, follow_symlinks=False, **extra_kwargs)
+                _link(self._temporary, self._name, **extra_kwargs)
                 os.unlink(self._temporary, dir_fd=self._dir_fd)
             if self._durability in ("file+directory", "full"):
                 _sync_directory(self._directory, self._dir_fd)
