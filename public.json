@@ -34,6 +34,9 @@
     "docs/diagrams/write-path.ko.light.svg",
     "docs/diagrams/write-path.ko.dark.svg",
     "public.json",
-    ".gitignore"
+    ".gitignore",
+    ".github/workflows/opencode-review.yml",
+    ".github/workflows/claude.yml",
+    ".github/workflows/tests.yml"
   ]
 }

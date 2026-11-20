@@ -34,10 +34,13 @@ Run the tests from the repository root. The test module adds `python/` to
   handling is a defect, not a follow-up.
 - **A line under Unreleased** in [CHANGELOG.md](CHANGELOG.md) when a caller would
   notice the change.
-- **The platforms you did not test** written in the pull request. Say macOS arm64,
-  Linux arm64, Windows x64 or nothing.
+- **The platforms you did not test** written in the pull request. The `tests`
+  workflow runs the suite on Ubuntu, macOS and Windows with Python 3.9 and 3.13.
 
 ## Review
+
+Every pull request runs an automatic DeepSeek review. Ask for another pass with
+`@claude review` in a comment. If a finding looks wrong, say why in the pull request.
 
 A change is a real defect when it lets a reader see a partially written file,
 leaves a temporary file behind after a failure, creates the temporary file wider
