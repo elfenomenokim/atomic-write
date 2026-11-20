@@ -10,7 +10,7 @@
     "python",
     "file-write"
   ],
-  "pypi": "https://pypi.org/project/atomic-write/",
+  "pypi": "https://pypi.org/project/feno-atomic-write/",
   "files": [
     "pyproject.toml",
     "python/atomic_write/__init__.py",

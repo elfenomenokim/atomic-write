@@ -45,8 +45,10 @@ keeps those two contracts explicit and nothing else.
 ## Install
 
 ```sh
-pip install atomic-write
+pip install feno-atomic-write
 ```
+
+The PyPI name is `feno-atomic-write` because `atomic-write` is too close to existing projects; the import name stays `atomic_write`.
 
 Or install from a checkout:
 

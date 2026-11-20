@@ -45,8 +45,10 @@ create-only, 디렉터리 sync는 직접 만들어야 합니다. 상태 파일�
 ## 설치
 
 ```sh
-pip install atomic-write
+pip install feno-atomic-write
 ```
+
+PyPI 이름은 `feno-atomic-write`입니다. `atomic-write`는 기존 프로젝트와 너무 비슷해 쓸 수 없었고, import 이름은 그대로 `atomic_write`입니다.
 
 체크아웃에서 설치할 수도 있습니다.
 
